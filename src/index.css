@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* 字体定义：确保本地安装了方正兰亭系列 */
+@font-face {
+  font-family: '方正兰亭中粗黑简体';
+  src: local('FZLanTingKanHei-B-GBK'), local('FZLanTingKanHei-B'), local('FZLTKHK--B'), local('方正兰亭中粗黑简体');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: '方正兰亭粗黑简体';
+  src: local('FZLanTingKanHei-H-GBK'), local('FZLanTingKanHei-H'), local('FZLTKHK--H'), local('方正兰亭粗黑简体');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "方正兰亭粗黑简体", "方正兰亭中粗黑简体", "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 antialiased font-sans;
+}
