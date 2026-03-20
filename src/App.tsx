@@ -50,6 +50,24 @@ const DOT_COLORS: Record<string, string[]> = {
   '#dfd9ff': ['#9e76ff', '#ffffff', '#ffdf7a', '#985946'],
 };
 
+// 颜色硬白名单：保证任何情况下渲染/导出只能使用这 4 个颜色
+const GRAPHIC_ALLOWED_COLORS = ['#9e76ff', '#dfd9ff', '#ffdf7a', '#985946'] as const;
+type GraphicAllowedColor = (typeof GRAPHIC_ALLOWED_COLORS)[number];
+
+const sanitizeAllowedColor = (c: string, fallback: string) =>
+  GRAPHIC_ALLOWED_COLORS.includes(c as GraphicAllowedColor) ? c : fallback;
+
+const sanitizeAllowedColorArray = (
+  arr: string[] | undefined,
+  fallback: string,
+) => {
+  const list = Array.isArray(arr) ? arr : [];
+  const filtered = list.filter((c) =>
+    GRAPHIC_ALLOWED_COLORS.includes(c as GraphicAllowedColor),
+  );
+  return filtered.length ? filtered : [fallback];
+};
+
 const ARTBOARD_W = 1920;
 const ARTBOARD_H = 900;
 const AREA_A = { x: 50, y: 50, w: 1220, h: 425 } as const;
@@ -108,6 +126,26 @@ function mapZhToEn(zh: number) {
     y = b2.y + t * (b3.y - b2.y);
   }
   return clamp(Math.round(y), MAIN_EN_SIZE_MIN, MAIN_EN_SIZE_MAX);
+}
+
+function splitMixedTitleText(text: string) {
+  const normalized = text
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n');
+  const lines = normalized.split('\n');
+  const enLines: string[] = [];
+  const zhLines: string[] = [];
+  // 简单规则：包含任意中文字符（CJK）就判定该行归入中文
+  const han = /[\u3400-\u9fff]/;
+  for (const line of lines) {
+    if (han.test(line)) zhLines.push(line);
+    else enLines.push(line);
+  }
+  return {
+    normalized,
+    enText: enLines.join('\n'),
+    zhText: zhLines.join('\n'),
+  };
 }
 
 const cx = (...classes: Array<string | false | null | undefined>) =>
@@ -374,7 +412,7 @@ const AppShellHeader = ({
             <span
               className={cx(
                 'absolute left-5 right-5 -bottom-1 h-[3px] rounded-full transition',
-                activeTab === t.key ? 'bg-[#915afd]' : 'bg-transparent',
+                activeTab === t.key ? 'bg-[#9e76ff]' : 'bg-transparent',
               )}
             />
           </button>
@@ -404,7 +442,7 @@ const PanelCard = ({
               {icon}
             </span>
           ) : (
-            <span className="w-2 h-2 rounded-full bg-[#915afd]" />
+            <span className="w-2 h-2 rounded-full bg-[#9e76ff]" />
           )}
           <h3 className="text-[13px] font-black tracking-tight text-slate-900">
             {title}
@@ -459,7 +497,7 @@ const Segmented = <T extends string>({
           className={cx(
             'flex-1 py-2 text-[11px] font-black rounded-lg transition',
             value === opt.value
-              ? 'bg-white text-[#915afd] shadow-sm'
+              ? 'bg-white text-[#9e76ff] shadow-sm'
               : 'text-slate-500 hover:text-slate-700',
           )}
         >
@@ -486,7 +524,7 @@ const Toggle = ({
       className={cx(
         'w-full flex items-center justify-between px-3 py-2 rounded-xl border text-left transition',
         checked
-          ? 'bg-[#915afd]/10 border-[#915afd]/25'
+          ? 'bg-[#9e76ff]/10 border-[#9e76ff]/25'
           : 'bg-white border-slate-200 hover:bg-slate-50',
       )}
     >
@@ -494,7 +532,7 @@ const Toggle = ({
       <span
         className={cx(
           'w-10 h-6 rounded-full relative transition',
-          checked ? 'bg-[#915afd]' : 'bg-slate-300',
+          checked ? 'bg-[#9e76ff]' : 'bg-slate-300',
         )}
       >
         <span
@@ -535,7 +573,7 @@ const IconToggle = ({
         disabled
           ? 'border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed'
           : on
-          ? 'border-[#915afd]/40 bg-[#915afd]/10 text-[#915afd]'
+          ? 'border-[#9e76ff]/40 bg-[#9e76ff]/10 text-[#9e76ff]'
           : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
       )}
       aria-label={label}
@@ -609,7 +647,7 @@ const Slider = ({
           }}
           disabled={disabled}
           className={cx(
-            'flex-1 min-w-0 accent-[#915afd]',
+            'flex-1 min-w-0 accent-[#9e76ff]',
             disabled && 'accent-slate-300',
           )}
         />
@@ -657,7 +695,7 @@ const ColorDots = ({
               onClick={() => onToggle(c)}
               className={cx(
                 'w-10 h-10 rounded-full border flex items-center justify-center transition',
-                isOn ? 'border-[#915afd] ring-2 ring-[#915afd]/20' : 'border-slate-200',
+                isOn ? 'border-[#9e76ff] ring-2 ring-[#9e76ff]/20' : 'border-slate-200',
               )}
               aria-label={`color ${c}`}
             >
@@ -698,7 +736,7 @@ const ColorPickDots = ({
               className={cx(
                 'w-10 h-10 rounded-full border flex items-center justify-center transition',
                 isOn
-                  ? 'border-[#915afd] ring-2 ring-[#915afd]/20'
+                  ? 'border-[#9e76ff] ring-2 ring-[#9e76ff]/20'
                   : 'border-slate-200',
               )}
               aria-label={`pick color ${c}`}
@@ -755,7 +793,7 @@ const LineColorDots = ({
               className={cx(
                 'w-10 h-10 rounded-full border flex items-center justify-center transition',
                 isOn
-                  ? 'border-[#915afd] ring-2 ring-[#915afd]/20'
+                  ? 'border-[#9e76ff] ring-2 ring-[#9e76ff]/20'
                   : 'border-slate-200',
               )}
               aria-label={`line color ${opt.id}`}
@@ -777,6 +815,14 @@ const DotLayer = ({ state }: { state: LayoutState }) => {
       ? state.dotColors.filter((c) => c !== state.bgColor)
       : [filteredAvailable[0]];
 
+  // 需求：点方向里 preset1/preset3 的“点生成”整体再向下偏移
+  const dotPresetYOffsetPx =
+    state.dotPreset === 'preset1'
+      ? 100
+      : state.dotPreset === 'preset3'
+        ? 50
+        : 0;
+
   const dots = useMemo(() => {
     let seed = state.dotSeed;
     const random = () => {
@@ -785,27 +831,44 @@ const DotLayer = ({ state }: { state: LayoutState }) => {
     };
 
     // “单向流动”点阵：沿方向向量分布，两端更密，中间更稀
-    const angle = random() * Math.PI * 2;
+    // dotRotation 直接控制流动方向（0°=水平横向），流带固定居中
+    const angle = (state.dotRotation * Math.PI) / 180;
     const dirX = Math.cos(angle);
     const dirY = Math.sin(angle);
     const nX = Math.cos(angle + Math.PI / 2);
     const nY = Math.sin(angle + Math.PI / 2);
 
-    // 在 0..100 的坐标系里选一个中心点，然后沿方向拉出一条很长的“流带”
-    const centerX = random() * 100;
-    const centerY = random() * 100;
-    const halfLen = 80; // 流带半长度（百分比），越大越贯穿画布
+    const centerX = 50;
+    const centerY = 50;
+    const halfLen = state.dotSideSpread; // 左右分散：流带半长度（百分比）
 
     // U 型分布：更靠近两端（类似截图那种两端密集感）
+    // 通过 exponent 控制“中间稀疏程度”：preset2 略微加大 exponent，使中间点更少
+    const uExponent = state.dotPreset === 'preset2' ? 0.45 : 0.35;
     const sampleUShapeT = () => {
       const r = random();
       if (r < 0.5) {
-        return Math.pow(random(), 0.35) * 0.5; // 0..0.5 更靠近 0
+        return Math.pow(random(), uExponent) * 0.5; // 0..0.5 更靠近 0
       }
-      return 1 - Math.pow(random(), 0.35) * 0.5; // 0.5..1 更靠近 1
+      return 1 - Math.pow(random(), uExponent) * 0.5; // 0.5..1 更靠近 1
     };
 
-    return Array.from({ length: state.dotCount }).map(() => {
+    // 颜色强制分配：确保 4 色都出现；棕/黄至少各 2 个
+    // 注意：如果用户未在色盘里选满 4 种颜色，则只能保证“已选择的颜色集合”满足该规则。
+    const YELLOW_COLOR = '#ffdf7a';
+    const BROWN_COLOR = '#985946';
+    const minsByColor: Record<string, number> = {};
+    selectedColors.forEach((c) => (minsByColor[c] = 1));
+    if (selectedColors.includes(YELLOW_COLOR)) minsByColor[YELLOW_COLOR] = 2;
+    if (selectedColors.includes(BROWN_COLOR)) minsByColor[BROWN_COLOR] = 2;
+    const forcedColorsAll: string[] = [];
+    selectedColors.forEach((c) => {
+      const n = minsByColor[c] ?? 0;
+      for (let k = 0; k < n; k++) forcedColorsAll.push(c);
+    });
+    const forcedColors = forcedColorsAll.slice(0, state.dotCount);
+
+    return Array.from({ length: state.dotCount }).map((_unused, i) => {
       const size = [95, 70, 45][Math.floor(random() * 3)];
       const margin = (size / 1920) * 100;
 
@@ -847,6 +910,11 @@ const DotLayer = ({ state }: { state: LayoutState }) => {
         color = selectedColors[Math.floor(random() * selectedColors.length)];
       }
 
+      // 对前若干个点强制指定颜色，满足“4色都出现 + 棕黄至少2个”
+      if (i < forcedColors.length) {
+        color = forcedColors[i];
+      }
+
       const shape =
         state.dotShape === 'random'
           ? (['circle', 'triangle', 'square'][
@@ -864,6 +932,7 @@ const DotLayer = ({ state }: { state: LayoutState }) => {
     state.dotCount,
     state.dotSpread,
     state.dotSeed,
+    state.dotRotation,
     state.dotColors,
     filteredAvailable,
     selectedColors,
@@ -873,7 +942,7 @@ const DotLayer = ({ state }: { state: LayoutState }) => {
     <div
       className="absolute inset-0 z-40 pointer-events-none transition-transform duration-500"
       style={{
-        transform: `translate(${state.dotX}px, ${state.dotY}px) rotate(${state.dotRotation}deg)`,
+        transform: `translate(${state.dotX}px, ${state.dotY + dotPresetYOffsetPx}px)`,
       }}
     >
       {dots.map((dot, i) => (
@@ -925,8 +994,8 @@ const LineLayer = ({ state }: { state: LayoutState }) => {
       const minWidth = 100 + (1 - state.lineLengthContrast) * 800;
       const maxWidth = 1920;
       const width = minWidth + random() * (maxWidth - minWidth);
-      const x = random() * (1920 - width);
-      const y = startY + i * thickness;
+      const x = random() * (1920 - width) + state.lineX;
+      const y = startY + i * thickness + state.lineY;
       const color = finalColors[i % finalColors.length];
       return { x, y, width, color };
     });
@@ -936,6 +1005,8 @@ const LineLayer = ({ state }: { state: LayoutState }) => {
     state.lineColors,
     state.lineLengthContrast,
     state.lineSeed,
+    state.lineX,
+    state.lineY,
     finalColors,
   ]);
 
@@ -982,14 +1053,15 @@ const computePlaneShapes = (
 
 const PlaneLayer = ({ state }: { state: LayoutState }) => {
   const availableColors = DOT_COLORS[state.bgColor] || DOT_COLORS['#ffffff'];
-  const filteredAvailable = availableColors.filter((c) => c !== state.bgColor);
+  // 提示：图形颜色必须严格按配置渲染，不做“等于底色则替换”的处理
+  // 否则会导致预设颜色（例如 #dfd9ff）在底色为同色时显示错误。
 
   const renderPlane = (
     config: PlaneConfig,
     shapeOverride?: 'square' | 'circle' | 'triangle',
   ) => {
     const type = shapeOverride || config.type;
-    const color = config.color === state.bgColor ? filteredAvailable[0] : config.color;
+    const color = config.color;
 
     const style: React.CSSProperties = {
       position: 'absolute',
@@ -1102,7 +1174,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         // 固定规范：标题间距、英文行距始终不变
-        return {
+        const merged: LayoutState = {
           ...initialLayoutState,
           ...parsed,
           activeTab: 'typography',
@@ -1111,6 +1183,75 @@ export default function App() {
           mainZhLineHeight: MAIN_ZH_LINE_HEIGHT,
           logoSvg: normalizeSvgToBox(parsed.logoSvg ?? DEFAULT_LOGO_SVG),
         };
+
+        // 颜色白名单过滤：防止旧 localStorage 里保存了非法颜色
+        merged.dotColors = sanitizeAllowedColorArray(
+          merged.dotColors,
+          initialLayoutState.dotColors[0],
+        );
+        merged.lineColors = sanitizeAllowedColorArray(
+          merged.lineColors,
+          initialLayoutState.lineColors[0],
+        );
+        merged.plane1 = {
+          ...merged.plane1,
+          color: sanitizeAllowedColor(merged.plane1.color, initialLayoutState.plane1.color),
+        };
+        merged.plane2 = {
+          ...merged.plane2,
+          color: sanitizeAllowedColor(merged.plane2.color, initialLayoutState.plane2.color),
+        };
+
+        // 强制覆盖 3 个预设的颜色组合（四种颜色中只用你指定的两色组合）
+        // 预设1：plane1 #9e76ff + plane2 #ffdf7a
+        // 预设2：plane1 #985946 + plane2 #9e76ff
+        // 预设3：plane1 #9e76ff + plane2 #985946
+        const enforcePairs = (cfg: any, idx: number) => {
+          if (!cfg) return cfg;
+          const nextPlane1 =
+            idx === 0
+              ? '#9e76ff'
+              : idx === 1
+                ? '#985946'
+                : '#9e76ff';
+          const nextPlane2 =
+            idx === 0
+              ? '#ffdf7a'
+              : idx === 1
+                ? '#9e76ff'
+                : '#ffdf7a';
+          return {
+            ...cfg,
+            plane1: { ...cfg.plane1, color: nextPlane1 },
+            plane2: { ...cfg.plane2, color: nextPlane2 },
+          };
+        };
+
+        merged.squarePlanePresets = (merged.squarePlanePresets || []).map((cfg, i) =>
+          enforcePairs(cfg, i),
+        );
+        merged.circlePlanePresets = (merged.circlePlanePresets || []).map((cfg, i) =>
+          enforcePairs(cfg, i),
+        );
+        merged.trianglePlanePresets = (merged.trianglePlanePresets || []).map((cfg, i) =>
+          enforcePairs(cfg, i),
+        );
+        merged.randomPlanePresets = (merged.randomPlanePresets || []).map((cfg, i) =>
+          enforcePairs(cfg, i),
+        );
+
+        // 主标题：统一为“一个文本内容”，但内部依然拆分为英/中行渲染
+        const derivedMixed =
+          (merged.mainMixedText && merged.mainMixedText.trim().length > 0
+            ? merged.mainMixedText
+            : [merged.mainEnText, merged.mainZhText].filter(Boolean).join('\n')) ?? '';
+        const { normalized, enText, zhText } =
+          splitMixedTitleText(derivedMixed);
+        merged.mainMixedText = normalized;
+        merged.mainEnText = enText;
+        merged.mainZhText = zhText;
+
+        return merged;
       } catch {
         return { ...initialLayoutState, logoSvg: DEFAULT_LOGO_SVG };
       }
@@ -1140,6 +1281,14 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 点阵预设只保留 1/2/3：如果当前落在 4/5，自动切回 1，避免出现“没有选中按钮”
+  useEffect(() => {
+    if (state.graphicType !== 'dot') return;
+    if (state.dotPreset === 'preset4' || state.dotPreset === 'preset5') {
+      setState((prev) => ({ ...prev, dotPreset: 'preset1' }));
+    }
+  }, [state.graphicType, state.dotPreset]);
+
   // 固定规范：标题间距始终 14px，英文行距始终 0.9
   useEffect(() => {
     setState((prev) => {
@@ -1157,17 +1306,35 @@ export default function App() {
 
   // 中英文同时出现时：字号联动缩放（中文跟随英文比例）
   useEffect(() => {
-    if (!(state.showMainEn && state.showMainZh && state.isSizeLinked)) return;
+    if (!state.isSizeLinked) return;
     const desiredZh = mapEnToZh(state.mainEnSize);
     if (state.mainZhSize === desiredZh) return;
     setState((prev) => ({ ...prev, mainZhSize: desiredZh }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.showMainEn, state.showMainZh, state.isSizeLinked, state.mainEnSize]);
+  }, [state.isSizeLinked, state.mainEnSize, state.mainZhSize]);
+
+  // 保证主标题中英字号始终保持当前比例缩放
+  useEffect(() => {
+    setState((prev) => (prev.isSizeLinked ? prev : { ...prev, isSizeLinked: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 主标题：固定粗黑（700），并始终显示中英文两层
+  useEffect(() => {
+    setState((prev) => ({
+      ...prev,
+      showMainEn: true,
+      showMainZh: true,
+      mainEnWeight: 700,
+      mainZhWeight: 700,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setMainEnSizeSynced = (v: number) => {
     const clamped = clamp(v, MAIN_EN_SIZE_MIN, MAIN_EN_SIZE_MAX);
     setState((prev) => {
-      if (prev.showMainEn && prev.showMainZh && prev.isSizeLinked) {
+      if (prev.isSizeLinked) {
         return {
           ...prev,
           mainEnSize: clamped,
@@ -1181,7 +1348,7 @@ export default function App() {
   const setMainZhSizeSynced = (v: number) => {
     const zh = clamp(v, MAIN_ZH_SIZE_MIN, MAIN_ZH_SIZE_MAX);
     setState((prev) => {
-      if (prev.showMainEn && prev.showMainZh && prev.isSizeLinked) {
+      if (prev.isSizeLinked) {
         const en = mapZhToEn(zh);
         return {
           ...prev,
@@ -1191,6 +1358,16 @@ export default function App() {
       }
       return { ...prev, mainZhSize: zh };
     });
+  };
+
+  const setMainMixedText = (v: string) => {
+    const { normalized, enText, zhText } = splitMixedTitleText(v);
+    setState((prev) => ({
+      ...prev,
+      mainMixedText: normalized,
+      mainEnText: enText,
+      mainZhText: zhText,
+    }));
   };
 
   // 方案B：画布逻辑尺寸固定 1920×900，但在网页内自适应缩放，始终完整露出（最多 100%）
@@ -1379,22 +1556,44 @@ export default function App() {
         const x = Math.sin(seed++) * 10000;
         return x - Math.floor(x);
       };
-      const angle = random() * Math.PI * 2;
+      const angle = (state.dotRotation * Math.PI) / 180;
       const dirX = Math.cos(angle);
       const dirY = Math.sin(angle);
       const nX = Math.cos(angle + Math.PI / 2);
       const nY = Math.sin(angle + Math.PI / 2);
-      const centerX = random() * 100;
-      const centerY = random() * 100;
-      const halfLen = 80;
+      const centerX = 50;
+      const centerY = 50;
+      const halfLen = state.dotSideSpread;
+      // 需求：点方向里 preset1/preset3 的“点生成”整体再向下偏移
+      const dotPresetYOffsetPx =
+        state.dotPreset === 'preset1'
+          ? 100
+          : state.dotPreset === 'preset3'
+            ? 50
+            : 0;
+      // SVG 导出与预览保持一致：preset2 略微增强中间稀疏度
+      const uExponent = state.dotPreset === 'preset2' ? 0.45 : 0.35;
+      // 颜色强制分配：确保 4 色都出现；棕/黄至少各 2 个
+      // 注意：如果用户未在色盘里选满 4 种颜色，则只能保证“已选择的颜色集合”满足该规则。
+      const YELLOW_COLOR = '#ffdf7a';
+      const BROWN_COLOR = '#985946';
+      const minsByColor: Record<string, number> = {};
+      selectedColors.forEach((c) => (minsByColor[c] = 1));
+      if (selectedColors.includes(YELLOW_COLOR)) minsByColor[YELLOW_COLOR] = 2;
+      if (selectedColors.includes(BROWN_COLOR)) minsByColor[BROWN_COLOR] = 2;
+      const forcedColorsAll: string[] = [];
+      selectedColors.forEach((c) => {
+        const n = minsByColor[c] ?? 0;
+        for (let k = 0; k < n; k++) forcedColorsAll.push(c);
+      });
+      const forcedColors = forcedColorsAll.slice(0, state.dotCount);
+
       const sampleUShapeT = () => {
         const r = random();
-        if (r < 0.5) return Math.pow(random(), 0.35) * 0.5;
-        return 1 - Math.pow(random(), 0.35) * 0.5;
+        if (r < 0.5) return Math.pow(random(), uExponent) * 0.5;
+        return 1 - Math.pow(random(), uExponent) * 0.5;
       };
-      svgContent += `  <g transform="translate(${state.dotX}, ${state.dotY}) rotate(${state.dotRotation}, ${
-        width / 2
-      }, ${height / 2})">
+      svgContent += `  <g transform="translate(${state.dotX}, ${state.dotY + dotPresetYOffsetPx})">
 `;
       for (let i = 0; i < state.dotCount; i++) {
         const size = [95, 70, 45][Math.floor(random() * 3)];
@@ -1415,8 +1614,8 @@ export default function App() {
         y += (random() - 0.5) * 1.2;
         x = Math.max(margin, Math.min(100 - margin, x));
         y = Math.max(margin, Math.min(100 - margin, y));
-        const color =
-          selectedColors[Math.floor(random() * selectedColors.length)];
+        let color = selectedColors[Math.floor(random() * selectedColors.length)];
+        if (i < forcedColors.length) color = forcedColors[i];
         const shape =
           state.dotShape === 'random'
             ? ['circle', 'triangle', 'square'][Math.floor(random() * 3)]
@@ -1461,8 +1660,8 @@ export default function App() {
           (1 - state.lineLengthContrast) * 800 +
           random() *
             (1920 - (100 + (1 - state.lineLengthContrast) * 800));
-        const x = random() * (1920 - lineWidth);
-        const y = startY + i * thickness;
+        const x = random() * (1920 - lineWidth) + state.lineX;
+        const y = startY + i * thickness + state.lineY;
         let fill = state.lineColors[i % state.lineColors.length];
         if (fill === 'sandwich') fill = 'url(#sandwich)';
         if (fill === 'sandwich2') fill = 'url(#sandwich2)';
@@ -1675,6 +1874,132 @@ export default function App() {
     window.addEventListener('mouseup', onUp);
   };
 
+  const DOT_PRESETS: Record<
+    'preset1' | 'preset2' | 'preset3',
+    { dotCount: number; dotSpread: number; dotX: number; dotY: number; dotRotation: number; dotSeed: number }
+  > = {
+    // 预设1：左右边缘密集（U型分布），整体下移并收窄厚度，尽量避开 Area A 主标题
+    preset1: { dotCount: 48, dotSpread: 14, dotX: 0, dotY: -120, dotRotation: 0, dotSeed: 7382 },
+    preset2: { dotCount: 30, dotSpread: 80,  dotX: 80,   dotY: -30, dotRotation: 150, dotSeed: 19204 },
+    preset3: { dotCount: 50, dotSpread: 160, dotX: -120, dotY: 60,  dotRotation: 280, dotSeed: 54917 },
+  };
+
+  const applyDotPreset = (
+    preset: 'preset1' | 'preset2' | 'preset3' | 'preset4' | 'preset5',
+  ) => {
+    setState((prev) => {
+      if (preset === 'preset1') {
+        return {
+          ...prev,
+          dotCount: prev.dotPreset1Count,
+          dotSpread: prev.dotPreset1Spread,
+          dotSideSpread: prev.dotPreset1SideSpread,
+          dotX: prev.dotPreset1X,
+          dotY: prev.dotPreset1Y,
+          dotRotation: prev.dotPreset1Rotation,
+          dotSeed: prev.dotPreset1Seed,
+          dotPreset: preset,
+        };
+      }
+      if (preset === 'preset2') {
+        return {
+          ...prev,
+          dotCount: prev.dotPreset2Count,
+          dotSpread: prev.dotPreset2Spread,
+          dotSideSpread: prev.dotPreset2SideSpread,
+          dotX: prev.dotPreset2X,
+          dotY: prev.dotPreset2Y,
+          dotRotation: prev.dotPreset2Rotation,
+          dotSeed: prev.dotPreset2Seed,
+          dotPreset: preset,
+        };
+      }
+
+      if (preset === 'preset3') {
+        return {
+          ...prev,
+          dotCount: prev.dotPreset3Count,
+          dotSpread: prev.dotPreset3Spread,
+          dotSideSpread: prev.dotPreset3SideSpread,
+          dotX: prev.dotPreset3X,
+          dotY: prev.dotPreset3Y,
+          dotRotation: prev.dotPreset3Rotation,
+          dotSeed: prev.dotPreset3Seed,
+          dotPreset: preset,
+        };
+      }
+
+      if (preset === 'preset4') {
+        return {
+          ...prev,
+          dotCount: prev.dotPreset4Count,
+          dotSpread: prev.dotPreset4Spread,
+          dotSideSpread: prev.dotPreset4SideSpread,
+          dotX: prev.dotPreset4X,
+          dotY: prev.dotPreset4Y,
+          dotRotation: prev.dotPreset4Rotation,
+          dotSeed: prev.dotPreset4Seed,
+          dotPreset: preset,
+        };
+      }
+
+      return {
+        ...prev,
+        dotCount: prev.dotPreset5Count,
+        dotSpread: prev.dotPreset5Spread,
+        dotSideSpread: prev.dotPreset5SideSpread,
+        dotX: prev.dotPreset5X,
+        dotY: prev.dotPreset5Y,
+        dotRotation: prev.dotPreset5Rotation,
+        dotSeed: prev.dotPreset5Seed,
+        dotPreset: preset,
+      };
+    });
+  };
+
+  const randomizeDot = () => {
+    setState((prev) => ({
+      ...prev,
+      dotCount:    Math.floor(Math.random() * 56) + 5,
+      dotSpread:   Math.floor(Math.random() * 201),
+      dotSideSpread: Math.floor(Math.random() * 201) + 100,
+      dotX:        Math.floor(Math.random() * 801) - 400,
+      dotY:        Math.floor(Math.random() * 501) - 250,
+      dotRotation: Math.floor(Math.random() * 361),
+      dotSeed:     Math.floor(Math.random() * 100000) + 1,
+      dotPreset:   'random',
+    }));
+    setToast('已随机生成一版点阵');
+  };
+
+  const applyLinePreset = (preset: 'preset1' | 'preset2' | 'preset3') => {
+    const n = preset.replace('preset', '') as '1' | '2' | '3';
+    const key = (field: string) =>
+      `linePreset${n}${field}` as keyof typeof state;
+    setState((prev) => ({
+      ...prev,
+      linePreset: preset,
+      lineCount: prev[key('Count')] as number,
+      lineThickness: prev[key('Thickness')] as number,
+      lineLengthContrast: prev[key('LengthContrast')] as number,
+      lineSeed: prev[key('Seed')] as number,
+      lineX: prev[key('X')] as number,
+      lineY: prev[key('Y')] as number,
+    }));
+  };
+
+  const randomizeLine = () => {
+    setState((prev) => ({
+      ...prev,
+      lineCount: Math.floor(Math.random() * 4) + 2,
+      lineThickness: Math.floor(Math.random() * 71) + 10,
+      lineLengthContrast: Math.round(Math.random() * 20) / 20,
+      lineSeed: Math.floor(Math.random() * 100000) + 1,
+      linePreset: 'random',
+    }));
+    setToast('已随机生成一版线条');
+  };
+
   const quickRandomize = () => {
     setState((prev) => ({
       ...prev,
@@ -1682,6 +2007,8 @@ export default function App() {
       lineSeed: Math.floor(Math.random() * 100000) + 1,
       planeSeed: Math.floor(Math.random() * 100000) + 1,
       dotRotation: Math.floor(Math.random() * 360),
+      dotSideSpread: Math.floor(Math.random() * 201) + 100,
+      dotPreset: 'random' as const,
     }));
     setToast('已随机生成一版');
   };
@@ -1748,6 +2075,42 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.bgColor]);
 
+  const applyPlanePreset = (preset: 'preset1' | 'preset2' | 'preset3') => {
+    const idx = parseInt(preset.replace('preset', '')) - 1;
+    const shape = state.planeShape;
+    const presetKey = (
+      shape === 'square' ? 'squarePlanePresets'
+      : shape === 'circle' ? 'circlePlanePresets'
+      : shape === 'triangle' ? 'trianglePlanePresets'
+      : 'randomPlanePresets'
+    ) as keyof typeof state;
+    const presetActiveKey = (
+      shape === 'square' ? 'squarePlanePreset'
+      : shape === 'circle' ? 'circlePlanePreset'
+      : shape === 'triangle' ? 'trianglePlanePreset'
+      : 'randomPlanePreset'
+    ) as keyof typeof state;
+    setState((prev) => {
+      const presets = prev[presetKey] as import('./types').PlanePresetConfig[];
+      const cfg = presets[idx];
+      if (!cfg) return prev;
+      return {
+        ...prev,
+        [presetActiveKey]: preset,
+        plane1: {
+          ...cfg.plane1,
+          color: cfg.plane1.color,
+        },
+        plane2: {
+          ...cfg.plane2,
+          color: cfg.plane2.color,
+        },
+        planeOrder: cfg.planeOrder,
+        planeSeed: cfg.planeSeed,
+      };
+    });
+  };
+
   const randomizePlanes = () => {
     const nextSeed = Math.floor(Math.random() * 100000) + 1;
     const nextShapes = computePlaneShapes(state.planeShape, nextSeed);
@@ -1785,16 +2148,56 @@ export default function App() {
     };
 
     setState((prev) => {
-      const colors = (DOT_COLORS[prev.bgColor] || DOT_COLORS['#ffffff']).filter(
-        (c) => c !== prev.bgColor,
-      );
-      if (colors.length < 1) return prev;
+      let c1: string;
+      let c2: string;
 
-      const c1 = colors[randInt(0, colors.length - 1)];
-      const c2 = colors.length >= 2 ? pickDifferentColor(c1) : c1;
+      if (
+        prev.planeShape === 'square' ||
+        prev.planeShape === 'circle' ||
+        prev.planeShape === 'triangle' ||
+        prev.planeShape === 'random'
+      ) {
+        // 所有面形状模式下：只允许这 3 种“两色组合”
+        const pairs = [
+          { a: '#9e76ff', b: '#ffdf7a' }, // 预设1
+          { a: '#985946', b: '#9e76ff' }, // 预设2
+          { a: '#9e76ff', b: '#ffdf7a' }, // 预设3
+        ] as const;
+
+        // 如果背景色是浅紫色（#dfd9ff），随机时避开生成同色，避免“看不见/混入背景”
+        // （同时对其它背景色也做一致的兜底判断）
+        const bg = prev.bgColor;
+        const safePairs = pairs.filter((p) => p.a !== bg && p.b !== bg);
+        const pickFrom = safePairs.length ? safePairs : pairs;
+        const pick = pickFrom[randInt(0, pickFrom.length - 1)];
+        c1 = pick.a;
+        c2 = pick.b;
+
+        // 最强兜底：再检查一次，避免因为其它逻辑导致仍抽到 bgColor
+        if (c1 === bg || c2 === bg) {
+          const fallback = pickFrom[0] ?? pairs[0];
+          c1 = fallback.a;
+          c2 = fallback.b;
+        }
+      } else {
+        const colors = (DOT_COLORS[prev.bgColor] || DOT_COLORS['#ffffff']).filter(
+          (c) => c !== prev.bgColor,
+        );
+        if (colors.length < 1) return prev;
+
+        c1 = colors[randInt(0, colors.length - 1)];
+        c2 = colors.length >= 2 ? pickDifferentColor(c1) : c1;
+      }
+      const shapePresetKey = (
+        prev.planeShape === 'square' ? 'squarePlanePreset'
+        : prev.planeShape === 'circle' ? 'circlePlanePreset'
+        : prev.planeShape === 'triangle' ? 'trianglePlanePreset'
+        : 'randomPlanePreset'
+      ) as keyof typeof prev;
 
       return {
         ...prev,
+        [shapePresetKey]: 'random',
         planeSeed: nextSeed,
         plane1: { ...mkPlane('plane1', prev.plane1), color: c1 },
         plane2: { ...mkPlane('plane2', prev.plane2), color: c2 },
@@ -1825,7 +2228,7 @@ export default function App() {
                 type="button"
                 onClick={() => exportImage('png')}
                 disabled={isExporting}
-                className="px-3 py-2 rounded-2xl bg-[#915afd] text-white text-[12px] font-black disabled:opacity-60"
+                className="px-3 py-2 rounded-2xl bg-[#9e76ff] text-white text-[12px] font-black disabled:opacity-60"
               >
                 导出 PNG
               </button>
@@ -2030,37 +2433,18 @@ export default function App() {
                       </PanelCard>
 
                       <PanelCard
-                        title="主标题（英文）"
+                        title="主标题"
                         icon={<Type size={16} />}
-                        right={
-                          <div className="flex items-center gap-2">
-                            <IconToggle
-                              on={state.showMainEn}
-                              onClick={() => updateState('showMainEn', !state.showMainEn)}
-                              iconOn={<Eye size={16} />}
-                              iconOff={<EyeOff size={16} />}
-                              label="显示/隐藏（英文）"
-                            />
-                            <IconToggle
-                              on={state.isSizeLinked}
-                              onClick={() => updateState('isSizeLinked', !state.isSizeLinked)}
-                              iconOn={<Lock size={16} />}
-                              iconOff={<Unlock size={16} />}
-                              label="联动锁（中英字号）"
-                              disabled={!(state.showMainEn && state.showMainZh)}
-                            />
-                          </div>
-                        }
                       >
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <FieldLabel label="文本内容" hint="支持换行" />
                             <textarea
-                              value={state.mainEnText}
+                              value={state.mainMixedText}
                               onChange={(e) =>
-                                updateState('mainEnText', e.target.value)
+                                setMainMixedText(e.target.value)
                               }
-                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[96px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[96px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                             />
                           </div>
                           <Slider
@@ -2072,29 +2456,14 @@ export default function App() {
                             onChange={setMainEnSizeSynced}
                             unit="px"
                           />
-                          <Segmented
-                            value={
-                              (state.mainEnWeight >= 700
-                                ? '700'
-                                : state.mainEnWeight >= 600
-                                ? '600'
-                                : '500') as '500' | '600' | '700'
-                            }
-                            onChange={(v) =>
-                              updateState('mainEnWeight', Number(v))
-                            }
-                            options={[
-                              { value: '500', label: '中黑' },
-                              { value: '600', label: '粗黑' },
-                              { value: '700', label: '粗黑+' },
-                            ]}
-                          />
+                          {/* 主标题粗细固定为粗黑(700)，界面不再提供调整入口 */}
                           {/* 行距固定：不在界面显示 */}
                         </div>
                       </PanelCard>
 
-                      <PanelCard
-                        title="主标题（中文）"
+                      {false && (
+                        <PanelCard
+                          title="主标题（中文）"
                         icon={<Type size={16} />}
                         right={
                           <div className="flex items-center gap-2">
@@ -2115,7 +2484,7 @@ export default function App() {
                             />
                           </div>
                         }
-                      >
+                        >
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <FieldLabel label="文本内容" />
@@ -2124,7 +2493,7 @@ export default function App() {
                               onChange={(e) =>
                                 updateState('mainZhText', e.target.value)
                               }
-                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                             />
                           </div>
                           <Slider
@@ -2168,7 +2537,8 @@ export default function App() {
                           />
                           {/* 行距固定：不在界面显示 */}
                         </div>
-                      </PanelCard>
+                        </PanelCard>
+                      )}
 
                       <PanelCard title="副标题（区域 B）" icon={<Check size={16} />}>
                         <div className="space-y-4">
@@ -2179,7 +2549,7 @@ export default function App() {
                               onChange={(e) =>
                                 updateState('sub1Text', e.target.value)
                               }
-                              className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                              className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                             />
                           </div>
                           <div className="space-y-2">
@@ -2189,7 +2559,7 @@ export default function App() {
                               onChange={(e) =>
                                 updateState('sub2Text', keepMaxLines(e.target.value, 2))
                               }
-                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[88px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                              className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[88px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                             />
                           </div>
                         </div>
@@ -2217,7 +2587,7 @@ export default function App() {
                               className={cx(
                                 'rounded-2xl border px-3 py-2.5 text-[12px] font-black transition flex items-center justify-center gap-2',
                                 state.bgColor === c
-                                  ? 'border-[#915afd] bg-[#915afd]/10'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
                                   : 'bg-white border-slate-200',
                               )}
                             >
@@ -2277,67 +2647,586 @@ export default function App() {
                             }}
                           />
 
-                          <div className="grid grid-cols-2 gap-3">
-                            <Slider
-                              label="数量"
-                              min={5}
-                              max={60}
-                              step={1}
-                              value={state.dotCount}
-                              onChange={(v) => updateState('dotCount', v)}
-                            />
-                            <Slider
-                              label="高度 / 分散"
-                              min={0}
-                              max={200}
-                              step={1}
-                              value={state.dotSpread}
-                              onChange={(v) => updateState('dotSpread', v)}
-                            />
+                          <FieldLabel label="布局预设" />
+                          <div className="grid grid-cols-3 gap-2">
+                            {(
+                              [
+                                'preset1',
+                                'preset2',
+                                'preset3',
+                              ] as const
+                            ).map((p, i) => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => applyDotPreset(p)}
+                                className={cx(
+                                  'rounded-2xl border py-2.5 text-[12px] font-black transition',
+                                  state.dotPreset === p
+                                    ? 'border-[#9e76ff] bg-[#9e76ff]/10 text-[#9e76ff]'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:border-[#9e76ff]/40',
+                                )}
+                              >
+                                {p === 'preset1'
+                                  ? '预设 1'
+                                  : p === 'preset2'
+                                    ? '预设 2'
+                                    : '预设 3'}
+                              </button>
+                            ))}
                           </div>
 
-                          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                          <div className="space-y-3 pt-2 hidden">
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.dotPreset === 'preset1'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 1</div>
+                                {state.dotPreset === 'preset1' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">
+                                    已选中
+                                  </div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider
+                                  label="数量"
+                                  min={5}
+                                  max={80}
+                                  step={1}
+                                  value={state.dotPreset1Count}
+                                  onChange={(v) => {
+                                    updateState('dotPreset1Count', v);
+                                    if (state.dotPreset === 'preset1') {
+                                      updateState('dotCount', v);
+                                    }
+                                  }}
+                                />
+                                <Slider
+                                  label="分散"
+                                  min={0}
+                                  max={200}
+                                  step={1}
+                                  value={state.dotPreset1Spread}
+                                  onChange={(v) => {
+                                    updateState('dotPreset1Spread', v);
+                                    if (state.dotPreset === 'preset1') {
+                                      updateState('dotSpread', v);
+                                    }
+                                  }}
+                                />
+                              </div>
+
+                              <Slider
+                                label="左右分散"
+                                min={0}
+                                max={400}
+                                step={1}
+                                value={state.dotPreset1SideSpread}
+                                onChange={(v) => {
+                                  updateState('dotPreset1SideSpread', v);
+                                  if (state.dotPreset === 'preset1') {
+                                    updateState('dotSideSpread', v);
+                                  }
+                                }}
+                                unit="%"
+                              />
+
+                              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                                <Slider
+                                  label="偏移 X"
+                                  min={-400}
+                                  max={400}
+                                  step={5}
+                                  value={state.dotPreset1X}
+                                  onChange={(v) => {
+                                    updateState('dotPreset1X', v);
+                                    if (state.dotPreset === 'preset1') {
+                                      updateState('dotX', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="偏移 Y"
+                                  min={-250}
+                                  max={250}
+                                  step={5}
+                                  value={state.dotPreset1Y}
+                                  onChange={(v) => {
+                                    updateState('dotPreset1Y', v);
+                                    if (state.dotPreset === 'preset1') {
+                                      updateState('dotY', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="旋转"
+                                  min={0}
+                                  max={360}
+                                  step={1}
+                                  value={state.dotPreset1Rotation}
+                                  onChange={(v) => {
+                                    updateState('dotPreset1Rotation', v);
+                                    if (state.dotPreset === 'preset1') {
+                                      updateState('dotRotation', v);
+                                    }
+                                  }}
+                                  unit="°"
+                                  compact
+                                />
+                              </div>
+                            </div>
+
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.dotPreset === 'preset2'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 2</div>
+                                {state.dotPreset === 'preset2' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">
+                                    已选中
+                                  </div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider
+                                  label="数量"
+                                  min={5}
+                                  max={80}
+                                  step={1}
+                                  value={state.dotPreset2Count}
+                                  onChange={(v) => {
+                                    updateState('dotPreset2Count', v);
+                                    if (state.dotPreset === 'preset2') {
+                                      updateState('dotCount', v);
+                                    }
+                                  }}
+                                />
+                                <Slider
+                                  label="分散"
+                                  min={0}
+                                  max={200}
+                                  step={1}
+                                  value={state.dotPreset2Spread}
+                                  onChange={(v) => {
+                                    updateState('dotPreset2Spread', v);
+                                    if (state.dotPreset === 'preset2') {
+                                      updateState('dotSpread', v);
+                                    }
+                                  }}
+                                />
+                              </div>
+
+                              <Slider
+                                label="左右分散"
+                                min={0}
+                                max={400}
+                                step={1}
+                                value={state.dotPreset2SideSpread}
+                                onChange={(v) => {
+                                  updateState('dotPreset2SideSpread', v);
+                                  if (state.dotPreset === 'preset2') {
+                                    updateState('dotSideSpread', v);
+                                  }
+                                }}
+                                unit="%"
+                              />
+
+                              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                                <Slider
+                                  label="偏移 X"
+                                  min={-400}
+                                  max={400}
+                                  step={5}
+                                  value={state.dotPreset2X}
+                                  onChange={(v) => {
+                                    updateState('dotPreset2X', v);
+                                    if (state.dotPreset === 'preset2') {
+                                      updateState('dotX', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="偏移 Y"
+                                  min={-250}
+                                  max={250}
+                                  step={5}
+                                  value={state.dotPreset2Y}
+                                  onChange={(v) => {
+                                    updateState('dotPreset2Y', v);
+                                    if (state.dotPreset === 'preset2') {
+                                      updateState('dotY', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="旋转"
+                                  min={0}
+                                  max={360}
+                                  step={1}
+                                  value={state.dotPreset2Rotation}
+                                  onChange={(v) => {
+                                    updateState('dotPreset2Rotation', v);
+                                    if (state.dotPreset === 'preset2') {
+                                      updateState('dotRotation', v);
+                                    }
+                                  }}
+                                  unit="°"
+                                  compact
+                                />
+                              </div>
+                            </div>
+
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.dotPreset === 'preset3'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 3</div>
+                                {state.dotPreset === 'preset3' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">
+                                    已选中
+                                  </div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider
+                                  label="数量"
+                                  min={5}
+                                  max={80}
+                                  step={1}
+                                  value={state.dotPreset3Count}
+                                  onChange={(v) => {
+                                    updateState('dotPreset3Count', v);
+                                    if (state.dotPreset === 'preset3') {
+                                      updateState('dotCount', v);
+                                    }
+                                  }}
+                                />
+                                <Slider
+                                  label="分散"
+                                  min={0}
+                                  max={200}
+                                  step={1}
+                                  value={state.dotPreset3Spread}
+                                  onChange={(v) => {
+                                    updateState('dotPreset3Spread', v);
+                                    if (state.dotPreset === 'preset3') {
+                                      updateState('dotSpread', v);
+                                    }
+                                  }}
+                                />
+                              </div>
+
+                              <Slider
+                                label="左右分散"
+                                min={0}
+                                max={400}
+                                step={1}
+                                value={state.dotPreset3SideSpread}
+                                onChange={(v) => {
+                                  updateState('dotPreset3SideSpread', v);
+                                  if (state.dotPreset === 'preset3') {
+                                    updateState('dotSideSpread', v);
+                                  }
+                                }}
+                                unit="%"
+                              />
+
+                              <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                                <Slider
+                                  label="偏移 X"
+                                  min={-400}
+                                  max={400}
+                                  step={5}
+                                  value={state.dotPreset3X}
+                                  onChange={(v) => {
+                                    updateState('dotPreset3X', v);
+                                    if (state.dotPreset === 'preset3') {
+                                      updateState('dotX', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="偏移 Y"
+                                  min={-250}
+                                  max={250}
+                                  step={5}
+                                  value={state.dotPreset3Y}
+                                  onChange={(v) => {
+                                    updateState('dotPreset3Y', v);
+                                    if (state.dotPreset === 'preset3') {
+                                      updateState('dotY', v);
+                                    }
+                                  }}
+                                  unit="px"
+                                  compact
+                                />
+                                <Slider
+                                  label="旋转"
+                                  min={0}
+                                  max={360}
+                                  step={1}
+                                  value={state.dotPreset3Rotation}
+                                  onChange={(v) => {
+                                    updateState('dotPreset3Rotation', v);
+                                    if (state.dotPreset === 'preset3') {
+                                      updateState('dotRotation', v);
+                                    }
+                                  }}
+                                  unit="°"
+                                  compact
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            className={cx(
+                              'rounded-2xl border p-3 space-y-3 hidden',
+                              state.dotPreset === 'preset4'
+                                ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                : 'border-slate-200 bg-white',
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="text-[12px] font-black">预设 4</div>
+                              {state.dotPreset === 'preset4' && (
+                                <div className="text-[11px] font-black text-[#9e76ff]">
+                                  已选中
+                                </div>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Slider
+                                label="数量"
+                                min={5}
+                                max={80}
+                                step={1}
+                                value={state.dotPreset4Count}
+                                onChange={(v) => {
+                                  updateState('dotPreset4Count', v);
+                                  if (state.dotPreset === 'preset4') {
+                                    updateState('dotCount', v);
+                                  }
+                                }}
+                              />
+                              <Slider
+                                label="分散"
+                                min={0}
+                                max={200}
+                                step={1}
+                                value={state.dotPreset4Spread}
+                                onChange={(v) => {
+                                  updateState('dotPreset4Spread', v);
+                                  if (state.dotPreset === 'preset4') {
+                                    updateState('dotSpread', v);
+                                  }
+                                }}
+                              />
+                            </div>
+
                             <Slider
-                              label="偏移 X"
-                              min={-400}
-                              max={400}
-                              step={5}
-                              value={state.dotX}
-                              onChange={(v) => updateState('dotX', v)}
-                              unit="px"
-                              compact
-                            />
-                            <Slider
-                              label="偏移 Y"
-                              min={-250}
-                              max={250}
-                              step={5}
-                              value={state.dotY}
-                              onChange={(v) => updateState('dotY', v)}
-                              unit="px"
-                              compact
-                            />
-                            <Slider
-                              label="旋转"
+                              label="左右分散"
                               min={0}
-                              max={360}
+                              max={400}
                               step={1}
-                              value={state.dotRotation}
-                              onChange={(v) => updateState('dotRotation', v)}
-                              unit="°"
-                              compact
+                              value={state.dotPreset4SideSpread}
+                              onChange={(v) => {
+                                updateState('dotPreset4SideSpread', v);
+                                if (state.dotPreset === 'preset4') {
+                                  updateState('dotSideSpread', v);
+                                }
+                              }}
+                              unit="%"
                             />
+
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                              <Slider
+                                label="偏移 X"
+                                min={-400}
+                                max={400}
+                                step={5}
+                                value={state.dotPreset4X}
+                                onChange={(v) => {
+                                  updateState('dotPreset4X', v);
+                                  if (state.dotPreset === 'preset4') {
+                                    updateState('dotX', v);
+                                  }
+                                }}
+                                unit="px"
+                                compact
+                              />
+                              <Slider
+                                label="偏移 Y"
+                                min={-250}
+                                max={250}
+                                step={5}
+                                value={state.dotPreset4Y}
+                                onChange={(v) => {
+                                  updateState('dotPreset4Y', v);
+                                  if (state.dotPreset === 'preset4') {
+                                    updateState('dotY', v);
+                                  }
+                                }}
+                                unit="px"
+                                compact
+                              />
+                              <Slider
+                                label="旋转"
+                                min={0}
+                                max={360}
+                                step={1}
+                                value={state.dotPreset4Rotation}
+                                onChange={(v) => {
+                                  updateState('dotPreset4Rotation', v);
+                                  if (state.dotPreset === 'preset4') {
+                                    updateState('dotRotation', v);
+                                  }
+                                }}
+                                unit="°"
+                                compact
+                              />
+                            </div>
+                          </div>
+
+                          <div
+                            className={cx(
+                              'rounded-2xl border p-3 space-y-3 hidden',
+                              state.dotPreset === 'preset5'
+                                ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                : 'border-slate-200 bg-white',
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="text-[12px] font-black">预设 5</div>
+                              {state.dotPreset === 'preset5' && (
+                                <div className="text-[11px] font-black text-[#9e76ff]">
+                                  已选中
+                                </div>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Slider
+                                label="数量"
+                                min={5}
+                                max={80}
+                                step={1}
+                                value={state.dotPreset5Count}
+                                onChange={(v) => {
+                                  updateState('dotPreset5Count', v);
+                                  if (state.dotPreset === 'preset5') {
+                                    updateState('dotCount', v);
+                                  }
+                                }}
+                              />
+                              <Slider
+                                label="分散"
+                                min={0}
+                                max={200}
+                                step={1}
+                                value={state.dotPreset5Spread}
+                                onChange={(v) => {
+                                  updateState('dotPreset5Spread', v);
+                                  if (state.dotPreset === 'preset5') {
+                                    updateState('dotSpread', v);
+                                  }
+                                }}
+                              />
+                            </div>
+
+                            <Slider
+                              label="左右分散"
+                              min={0}
+                              max={400}
+                              step={1}
+                              value={state.dotPreset5SideSpread}
+                              onChange={(v) => {
+                                updateState('dotPreset5SideSpread', v);
+                                if (state.dotPreset === 'preset5') {
+                                  updateState('dotSideSpread', v);
+                                }
+                              }}
+                              unit="%"
+                            />
+
+                            <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                              <Slider
+                                label="偏移 X"
+                                min={-400}
+                                max={400}
+                                step={5}
+                                value={state.dotPreset5X}
+                                onChange={(v) => {
+                                  updateState('dotPreset5X', v);
+                                  if (state.dotPreset === 'preset5') {
+                                    updateState('dotX', v);
+                                  }
+                                }}
+                                unit="px"
+                                compact
+                              />
+                              <Slider
+                                label="偏移 Y"
+                                min={-250}
+                                max={250}
+                                step={5}
+                                value={state.dotPreset5Y}
+                                onChange={(v) => {
+                                  updateState('dotPreset5Y', v);
+                                  if (state.dotPreset === 'preset5') {
+                                    updateState('dotY', v);
+                                  }
+                                }}
+                                unit="px"
+                                compact
+                              />
+                              <Slider
+                                label="旋转"
+                                min={0}
+                                max={360}
+                                step={1}
+                                value={state.dotPreset5Rotation}
+                                onChange={(v) => {
+                                  updateState('dotPreset5Rotation', v);
+                                  if (state.dotPreset === 'preset5') {
+                                    updateState('dotRotation', v);
+                                  }
+                                }}
+                                unit="°"
+                                compact
+                              />
+                            </div>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() =>
-                              updateState(
-                                'dotSeed',
-                                Math.floor(Math.random() * 100000) + 1,
-                              )
-                            }
-                            className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                            onClick={randomizeDot}
+                            className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                           >
                             随机生成
                           </button>
@@ -2348,14 +3237,119 @@ export default function App() {
                     {state.graphicType === 'line' && (
                       <PanelCard title="线条" icon={<Shuffle size={16} />}>
                         <div className="space-y-4">
-                          <Slider
-                            label="数量"
-                            min={2}
-                            max={5}
-                            step={1}
-                            value={state.lineCount}
-                            onChange={(v) => updateState('lineCount', v)}
-                          />
+                          <div className="flex gap-2">
+                            {(['preset1', 'preset2', 'preset3'] as const).map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => applyLinePreset(p)}
+                                className={cx(
+                                  'flex-1 py-2 rounded-xl text-[12px] font-black transition border',
+                                  state.linePreset === p
+                                    ? 'bg-[#9e76ff] text-white border-[#9e76ff]'
+                                    : 'bg-white text-[#9e76ff] border-[#9e76ff]/40 hover:border-[#9e76ff]',
+                                )}
+                              >
+                                预设 {p.replace('preset', '')}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="space-y-3 hidden">
+                            {/* 预设1 控制器 */}
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.linePreset === 'preset1'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 1</div>
+                                {state.linePreset === 'preset1' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <Slider label="条数" min={2} max={5} step={1} value={state.linePreset1Count}
+                                  onChange={(v) => { updateState('linePreset1Count', v); if (state.linePreset === 'preset1') updateState('lineCount', v); }} compact />
+                                <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset1Thickness}
+                                  onChange={(v) => { updateState('linePreset1Thickness', v); if (state.linePreset === 'preset1') updateState('lineThickness', v); }} unit="px" compact />
+                                <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset1LengthContrast}
+                                  onChange={(v) => { updateState('linePreset1LengthContrast', v); if (state.linePreset === 'preset1') updateState('lineLengthContrast', v); }} compact />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset1X}
+                                  onChange={(v) => { updateState('linePreset1X', v); if (state.linePreset === 'preset1') updateState('lineX', v); }} unit="px" compact />
+                                <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset1Y}
+                                  onChange={(v) => { updateState('linePreset1Y', v); if (state.linePreset === 'preset1') updateState('lineY', v); }} unit="px" compact />
+                              </div>
+                            </div>
+
+                            {/* 预设2 控制器 */}
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.linePreset === 'preset2'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 2</div>
+                                {state.linePreset === 'preset2' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <Slider label="条数" min={2} max={5} step={1} value={state.linePreset2Count}
+                                  onChange={(v) => { updateState('linePreset2Count', v); if (state.linePreset === 'preset2') updateState('lineCount', v); }} compact />
+                                <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset2Thickness}
+                                  onChange={(v) => { updateState('linePreset2Thickness', v); if (state.linePreset === 'preset2') updateState('lineThickness', v); }} unit="px" compact />
+                                <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset2LengthContrast}
+                                  onChange={(v) => { updateState('linePreset2LengthContrast', v); if (state.linePreset === 'preset2') updateState('lineLengthContrast', v); }} compact />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset2X}
+                                  onChange={(v) => { updateState('linePreset2X', v); if (state.linePreset === 'preset2') updateState('lineX', v); }} unit="px" compact />
+                                <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset2Y}
+                                  onChange={(v) => { updateState('linePreset2Y', v); if (state.linePreset === 'preset2') updateState('lineY', v); }} unit="px" compact />
+                              </div>
+                            </div>
+
+                            {/* 预设3 控制器 */}
+                            <div
+                              className={cx(
+                                'rounded-2xl border p-3 space-y-3',
+                                state.linePreset === 'preset3'
+                                  ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                                  : 'border-slate-200 bg-white',
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-[12px] font-black">预设 3</div>
+                                {state.linePreset === 'preset3' && (
+                                  <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <Slider label="条数" min={2} max={5} step={1} value={state.linePreset3Count}
+                                  onChange={(v) => { updateState('linePreset3Count', v); if (state.linePreset === 'preset3') updateState('lineCount', v); }} compact />
+                                <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset3Thickness}
+                                  onChange={(v) => { updateState('linePreset3Thickness', v); if (state.linePreset === 'preset3') updateState('lineThickness', v); }} unit="px" compact />
+                                <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset3LengthContrast}
+                                  onChange={(v) => { updateState('linePreset3LengthContrast', v); if (state.linePreset === 'preset3') updateState('lineLengthContrast', v); }} compact />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset3X}
+                                  onChange={(v) => { updateState('linePreset3X', v); if (state.linePreset === 'preset3') updateState('lineX', v); }} unit="px" compact />
+                                <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset3Y}
+                                  onChange={(v) => { updateState('linePreset3Y', v); if (state.linePreset === 'preset3') updateState('lineY', v); }} unit="px" compact />
+                              </div>
+                            </div>
+                          </div>
+
                           <LineColorDots
                             label="颜色"
                             options={[
@@ -2392,34 +3386,10 @@ export default function App() {
                               );
                             }}
                           />
-                          <Slider
-                            label="厚度"
-                            min={10}
-                            max={80}
-                            step={1}
-                            value={state.lineThickness}
-                            onChange={(v) => updateState('lineThickness', v)}
-                            unit="px"
-                          />
-                          <Slider
-                            label="长度对比"
-                            min={0}
-                            max={1}
-                            step={0.05}
-                            value={state.lineLengthContrast}
-                            onChange={(v) =>
-                              updateState('lineLengthContrast', v)
-                            }
-                          />
                           <button
                             type="button"
-                            onClick={() =>
-                              updateState(
-                                'lineSeed',
-                                Math.floor(Math.random() * 100000) + 1,
-                              )
-                            }
-                            className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                            onClick={randomizeLine}
+                            className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                           >
                             随机生成
                           </button>
@@ -2441,6 +3411,34 @@ export default function App() {
                               { value: 'random', label: '随机形状' },
                             ]}
                           />
+
+                          {/* 每种形状的预设按钮 */}
+                          <div className="flex gap-2">
+                            {(['preset1', 'preset2', 'preset3'] as const).map((p) => {
+                              const activePreset =
+                                state.planeShape === 'square' ? state.squarePlanePreset
+                                : state.planeShape === 'circle' ? state.circlePlanePreset
+                                : state.planeShape === 'triangle' ? state.trianglePlanePreset
+                                : state.randomPlanePreset;
+                              return (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => applyPlanePreset(p)}
+                                  className={cx(
+                                    'flex-1 py-2 rounded-xl text-[12px] font-black transition border',
+                                    activePreset === p
+                                      ? 'bg-[#9e76ff] text-white border-[#9e76ff]'
+                                      : 'bg-white text-[#9e76ff] border-[#9e76ff]/40 hover:border-[#9e76ff]',
+                                  )}
+                                >
+                                  预设 {p.replace('preset', '')}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {false && (<div>
                           <FieldLabel label="叠放顺序" />
                           <Segmented
                             value={state.planeOrder}
@@ -2739,10 +3737,11 @@ export default function App() {
                             </div>
                           </div>
 
-                          <button
+
+                          </div>)}                          <button
                             type="button"
                             onClick={randomizePlanes}
-                            className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                            className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                           >
                             随机生成
                           </button>
@@ -2771,7 +3770,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black hover:bg-[#7e49f4] transition"
+                            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black hover:bg-[#7e49f4] transition"
                           >
                             <ImageIcon size={18} />
                             上传 SVG
@@ -2963,7 +3962,7 @@ export default function App() {
                 className={cx(
                   'w-12 h-12 rounded-2xl border flex items-center justify-center',
                   activeTab === 'typography'
-                    ? 'border-[#915afd]/30 bg-[#915afd]/10 text-[#915afd]'
+                    ? 'border-[#9e76ff]/30 bg-[#9e76ff]/10 text-[#9e76ff]'
                     : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
                 )}
                 title="文字排版"
@@ -2976,7 +3975,7 @@ export default function App() {
                 className={cx(
                   'w-12 h-12 rounded-2xl border flex items-center justify-center',
                   activeTab === 'graphic'
-                    ? 'border-[#915afd]/30 bg-[#915afd]/10 text-[#915afd]'
+                    ? 'border-[#9e76ff]/30 bg-[#9e76ff]/10 text-[#9e76ff]'
                     : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
                 )}
                 title="图形设计"
@@ -2989,7 +3988,7 @@ export default function App() {
                 className={cx(
                   'w-12 h-12 rounded-2xl border flex items-center justify-center',
                   activeTab === 'output'
-                    ? 'border-[#915afd]/30 bg-[#915afd]/10 text-[#915afd]'
+                    ? 'border-[#9e76ff]/30 bg-[#9e76ff]/10 text-[#9e76ff]'
                     : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50',
                 )}
                 title="输出文件"
@@ -3037,37 +4036,16 @@ export default function App() {
 
                 <div>
                   <PanelCard
-                    title="主标题（英文）"
+                    title="主标题"
                     icon={<Type size={16} />}
-                    right={
-                      <div className="flex items-center gap-2">
-                        <IconToggle
-                          on={state.showMainEn}
-                          onClick={() => updateState('showMainEn', !state.showMainEn)}
-                          iconOn={<Eye size={16} />}
-                          iconOff={<EyeOff size={16} />}
-                          label="显示/隐藏（英文）"
-                        />
-                        <IconToggle
-                          on={state.isSizeLinked}
-                          onClick={() => updateState('isSizeLinked', !state.isSizeLinked)}
-                          iconOn={<Lock size={16} />}
-                          iconOff={<Unlock size={16} />}
-                          label="联动锁（中英字号）"
-                          disabled={!(state.showMainEn && state.showMainZh)}
-                        />
-                      </div>
-                    }
                   >
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <FieldLabel label="文本内容" hint="支持换行" />
                         <textarea
-                          value={state.mainEnText}
-                          onChange={(e) =>
-                            updateState('mainEnText', e.target.value)
-                          }
-                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[96px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                          value={state.mainMixedText}
+                          onChange={(e) => setMainMixedText(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[96px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                         />
                       </div>
                       <Slider
@@ -3079,27 +4057,12 @@ export default function App() {
                         onChange={setMainEnSizeSynced}
                         unit="px"
                       />
-                      <Segmented
-                        value={
-                          (state.mainEnWeight >= 700
-                            ? '700'
-                            : state.mainEnWeight >= 600
-                            ? '600'
-                            : '500') as '500' | '600' | '700'
-                        }
-                        onChange={(v) =>
-                          updateState('mainEnWeight', Number(v))
-                        }
-                        options={[
-                          { value: '500', label: '中黑' },
-                          { value: '600', label: '粗黑' },
-                          { value: '700', label: '粗黑+' },
-                        ]}
-                      />
+                      {/* 主标题粗细固定为粗黑(700)，界面不再提供调整入口 */}
                       {/* 行距固定：不在界面显示 */}
                     </div>
                   </PanelCard>
 
+                  {false && (
                   <PanelCard
                     title="主标题（中文）"
                     icon={<Type size={16} />}
@@ -3131,7 +4094,7 @@ export default function App() {
                           onChange={(e) =>
                             updateState('mainZhText', e.target.value)
                           }
-                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                         />
                       </div>
                       <Slider
@@ -3171,6 +4134,7 @@ export default function App() {
                       {/* 行距固定：不在界面显示 */}
                     </div>
                   </PanelCard>
+                  )}
 
                   <PanelCard title="副标题（区域 B）" icon={<Check size={16} />}>
                     <div className="space-y-4">
@@ -3181,7 +4145,7 @@ export default function App() {
                           onChange={(e) =>
                             updateState('sub1Text', e.target.value)
                           }
-                          className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                          className="w-full bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                         />
                       </div>
                       <div className="space-y-2">
@@ -3191,7 +4155,7 @@ export default function App() {
                           onChange={(e) =>
                             updateState('sub2Text', keepMaxLines(e.target.value, 2))
                           }
-                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[88px] focus:outline-none focus:ring-2 focus:ring-[#915afd]/30"
+                          className="w-full bg-white border border-slate-200 rounded-2xl p-3 text-[13px] font-bold min-h-[88px] focus:outline-none focus:ring-2 focus:ring-[#9e76ff]/30"
                         />
                       </div>
                     </div>
@@ -3218,7 +4182,7 @@ export default function App() {
                           className={cx(
                             'rounded-2xl border px-3 py-2.5 text-[12px] font-black transition flex items-center justify-center gap-2',
                             state.bgColor === c
-                              ? 'border-[#915afd] bg-[#915afd]/10'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
                               : 'bg-white border-slate-200',
                           )}
                         >
@@ -3278,64 +4242,588 @@ export default function App() {
                         }}
                       />
 
-                      <Slider
-                        label="数量"
-                        min={5}
-                        max={60}
-                        step={1}
-                        value={state.dotCount}
-                        onChange={(v) => updateState('dotCount', v)}
-                      />
-                      <Slider
-                        label="高度 / 分散"
-                        min={0}
-                        max={200}
-                        step={1}
-                        value={state.dotSpread}
-                        onChange={(v) => updateState('dotSpread', v)}
-                      />
-                      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+                      <FieldLabel label="布局预设" />
+                      <div className="grid grid-cols-3 gap-2">
+                        {(
+                          [
+                            'preset1',
+                            'preset2',
+                            'preset3',
+                          ] as const
+                        ).map((p, i) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => applyDotPreset(p)}
+                            className={cx(
+                              'rounded-2xl border py-2.5 text-[12px] font-black transition',
+                              state.dotPreset === p
+                                ? 'border-[#9e76ff] bg-[#9e76ff]/10 text-[#9e76ff]'
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-[#9e76ff]/40',
+                            )}
+                          >
+                            {p === 'preset1'
+                              ? '预设 1'
+                              : p === 'preset2'
+                                ? '预设 2'
+                                : '预设 3'}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3 pt-2 hidden">
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.dotPreset === 'preset1'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 1</div>
+                            {state.dotPreset === 'preset1' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">
+                                已选中
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="数量"
+                              min={5}
+                              max={80}
+                              step={1}
+                              value={state.dotPreset1Count}
+                              onChange={(v) => {
+                                updateState('dotPreset1Count', v);
+                                if (state.dotPreset === 'preset1') {
+                                  updateState('dotCount', v);
+                                }
+                              }}
+                            />
+                            <Slider
+                              label="分散"
+                              min={0}
+                              max={200}
+                              step={1}
+                              value={state.dotPreset1Spread}
+                              onChange={(v) => {
+                                updateState('dotPreset1Spread', v);
+                                if (state.dotPreset === 'preset1') {
+                                  updateState('dotSpread', v);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <Slider
+                            label="左右分散"
+                            min={0}
+                            max={400}
+                            step={1}
+                            value={state.dotPreset1SideSpread}
+                            onChange={(v) => {
+                              updateState('dotPreset1SideSpread', v);
+                              if (state.dotPreset === 'preset1') {
+                                updateState('dotSideSpread', v);
+                              }
+                            }}
+                            unit="%"
+                          />
+
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="偏移 X"
+                              min={-400}
+                              max={400}
+                              step={5}
+                              value={state.dotPreset1X}
+                              onChange={(v) => {
+                                updateState('dotPreset1X', v);
+                                if (state.dotPreset === 'preset1') {
+                                  updateState('dotX', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="偏移 Y"
+                              min={-250}
+                              max={250}
+                              step={5}
+                              value={state.dotPreset1Y}
+                              onChange={(v) => {
+                                updateState('dotPreset1Y', v);
+                                if (state.dotPreset === 'preset1') {
+                                  updateState('dotY', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="旋转"
+                              min={0}
+                              max={360}
+                              step={1}
+                              value={state.dotPreset1Rotation}
+                              onChange={(v) => {
+                                updateState('dotPreset1Rotation', v);
+                                if (state.dotPreset === 'preset1') {
+                                  updateState('dotRotation', v);
+                                }
+                              }}
+                              unit="°"
+                              compact
+                            />
+                          </div>
+                        </div>
+
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.dotPreset === 'preset2'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 2</div>
+                            {state.dotPreset === 'preset2' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">
+                                已选中
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="数量"
+                              min={5}
+                              max={80}
+                              step={1}
+                              value={state.dotPreset2Count}
+                              onChange={(v) => {
+                                updateState('dotPreset2Count', v);
+                                if (state.dotPreset === 'preset2') {
+                                  updateState('dotCount', v);
+                                }
+                              }}
+                            />
+                            <Slider
+                              label="分散"
+                              min={0}
+                              max={200}
+                              step={1}
+                              value={state.dotPreset2Spread}
+                              onChange={(v) => {
+                                updateState('dotPreset2Spread', v);
+                                if (state.dotPreset === 'preset2') {
+                                  updateState('dotSpread', v);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <Slider
+                            label="左右分散"
+                            min={0}
+                            max={400}
+                            step={1}
+                            value={state.dotPreset2SideSpread}
+                            onChange={(v) => {
+                              updateState('dotPreset2SideSpread', v);
+                              if (state.dotPreset === 'preset2') {
+                                updateState('dotSideSpread', v);
+                              }
+                            }}
+                            unit="%"
+                          />
+
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="偏移 X"
+                              min={-400}
+                              max={400}
+                              step={5}
+                              value={state.dotPreset2X}
+                              onChange={(v) => {
+                                updateState('dotPreset2X', v);
+                                if (state.dotPreset === 'preset2') {
+                                  updateState('dotX', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="偏移 Y"
+                              min={-250}
+                              max={250}
+                              step={5}
+                              value={state.dotPreset2Y}
+                              onChange={(v) => {
+                                updateState('dotPreset2Y', v);
+                                if (state.dotPreset === 'preset2') {
+                                  updateState('dotY', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="旋转"
+                              min={0}
+                              max={360}
+                              step={1}
+                              value={state.dotPreset2Rotation}
+                              onChange={(v) => {
+                                updateState('dotPreset2Rotation', v);
+                                if (state.dotPreset === 'preset2') {
+                                  updateState('dotRotation', v);
+                                }
+                              }}
+                              unit="°"
+                              compact
+                            />
+                          </div>
+                        </div>
+
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.dotPreset === 'preset3'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 3</div>
+                            {state.dotPreset === 'preset3' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">
+                                已选中
+                              </div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="数量"
+                              min={5}
+                              max={80}
+                              step={1}
+                              value={state.dotPreset3Count}
+                              onChange={(v) => {
+                                updateState('dotPreset3Count', v);
+                                if (state.dotPreset === 'preset3') {
+                                  updateState('dotCount', v);
+                                }
+                              }}
+                            />
+                            <Slider
+                              label="分散"
+                              min={0}
+                              max={200}
+                              step={1}
+                              value={state.dotPreset3Spread}
+                              onChange={(v) => {
+                                updateState('dotPreset3Spread', v);
+                                if (state.dotPreset === 'preset3') {
+                                  updateState('dotSpread', v);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <Slider
+                            label="左右分散"
+                            min={0}
+                            max={400}
+                            step={1}
+                            value={state.dotPreset3SideSpread}
+                            onChange={(v) => {
+                              updateState('dotPreset3SideSpread', v);
+                              if (state.dotPreset === 'preset3') {
+                                updateState('dotSideSpread', v);
+                              }
+                            }}
+                            unit="%"
+                          />
+
+                          <div className="grid grid-cols-1 gap-3">
+                            <Slider
+                              label="偏移 X"
+                              min={-400}
+                              max={400}
+                              step={5}
+                              value={state.dotPreset3X}
+                              onChange={(v) => {
+                                updateState('dotPreset3X', v);
+                                if (state.dotPreset === 'preset3') {
+                                  updateState('dotX', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="偏移 Y"
+                              min={-250}
+                              max={250}
+                              step={5}
+                              value={state.dotPreset3Y}
+                              onChange={(v) => {
+                                updateState('dotPreset3Y', v);
+                                if (state.dotPreset === 'preset3') {
+                                  updateState('dotY', v);
+                                }
+                              }}
+                              unit="px"
+                              compact
+                            />
+                            <Slider
+                              label="旋转"
+                              min={0}
+                              max={360}
+                              step={1}
+                              value={state.dotPreset3Rotation}
+                              onChange={(v) => {
+                                updateState('dotPreset3Rotation', v);
+                                if (state.dotPreset === 'preset3') {
+                                  updateState('dotRotation', v);
+                                }
+                              }}
+                              unit="°"
+                              compact
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={cx(
+                          'rounded-2xl border p-3 space-y-3 hidden',
+                          state.dotPreset === 'preset4'
+                            ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                            : 'border-slate-200 bg-white',
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[12px] font-black">预设 4</div>
+                          {state.dotPreset === 'preset4' && (
+                            <div className="text-[11px] font-black text-[#9e76ff]">
+                              已选中
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <Slider
+                            label="数量"
+                            min={5}
+                            max={80}
+                            step={1}
+                            value={state.dotPreset4Count}
+                            onChange={(v) => {
+                              updateState('dotPreset4Count', v);
+                              if (state.dotPreset === 'preset4') {
+                                updateState('dotCount', v);
+                              }
+                            }}
+                          />
+                          <Slider
+                            label="分散"
+                            min={0}
+                            max={200}
+                            step={1}
+                            value={state.dotPreset4Spread}
+                            onChange={(v) => {
+                              updateState('dotPreset4Spread', v);
+                              if (state.dotPreset === 'preset4') {
+                                updateState('dotSpread', v);
+                              }
+                            }}
+                          />
+                        </div>
+
                         <Slider
-                          label="偏移 X"
-                          min={-400}
-                          max={400}
-                          step={5}
-                          value={state.dotX}
-                          onChange={(v) => updateState('dotX', v)}
-                          unit="px"
-                          compact
-                        />
-                        <Slider
-                          label="偏移 Y"
-                          min={-250}
-                          max={250}
-                          step={5}
-                          value={state.dotY}
-                          onChange={(v) => updateState('dotY', v)}
-                          unit="px"
-                          compact
-                        />
-                        <Slider
-                          label="旋转"
+                          label="左右分散"
                           min={0}
-                          max={360}
+                          max={400}
                           step={1}
-                          value={state.dotRotation}
-                          onChange={(v) => updateState('dotRotation', v)}
-                          unit="°"
-                          compact
+                          value={state.dotPreset4SideSpread}
+                          onChange={(v) => {
+                            updateState('dotPreset4SideSpread', v);
+                            if (state.dotPreset === 'preset4') {
+                              updateState('dotSideSpread', v);
+                            }
+                          }}
+                          unit="%"
                         />
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <Slider
+                            label="偏移 X"
+                            min={-400}
+                            max={400}
+                            step={5}
+                            value={state.dotPreset4X}
+                            onChange={(v) => {
+                              updateState('dotPreset4X', v);
+                              if (state.dotPreset === 'preset4') {
+                                updateState('dotX', v);
+                              }
+                            }}
+                            unit="px"
+                            compact
+                          />
+                          <Slider
+                            label="偏移 Y"
+                            min={-250}
+                            max={250}
+                            step={5}
+                            value={state.dotPreset4Y}
+                            onChange={(v) => {
+                              updateState('dotPreset4Y', v);
+                              if (state.dotPreset === 'preset4') {
+                                updateState('dotY', v);
+                              }
+                            }}
+                            unit="px"
+                            compact
+                          />
+                          <Slider
+                            label="旋转"
+                            min={0}
+                            max={360}
+                            step={1}
+                            value={state.dotPreset4Rotation}
+                            onChange={(v) => {
+                              updateState('dotPreset4Rotation', v);
+                              if (state.dotPreset === 'preset4') {
+                                updateState('dotRotation', v);
+                              }
+                            }}
+                            unit="°"
+                            compact
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        className={cx(
+                          'rounded-2xl border p-3 space-y-3 hidden',
+                          state.dotPreset === 'preset5'
+                            ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                            : 'border-slate-200 bg-white',
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[12px] font-black">预设 5</div>
+                          {state.dotPreset === 'preset5' && (
+                            <div className="text-[11px] font-black text-[#9e76ff]">
+                              已选中
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <Slider
+                            label="数量"
+                            min={5}
+                            max={80}
+                            step={1}
+                            value={state.dotPreset5Count}
+                            onChange={(v) => {
+                              updateState('dotPreset5Count', v);
+                              if (state.dotPreset === 'preset5') {
+                                updateState('dotCount', v);
+                              }
+                            }}
+                          />
+                          <Slider
+                            label="分散"
+                            min={0}
+                            max={200}
+                            step={1}
+                            value={state.dotPreset5Spread}
+                            onChange={(v) => {
+                              updateState('dotPreset5Spread', v);
+                              if (state.dotPreset === 'preset5') {
+                                updateState('dotSpread', v);
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <Slider
+                          label="左右分散"
+                          min={0}
+                          max={400}
+                          step={1}
+                          value={state.dotPreset5SideSpread}
+                          onChange={(v) => {
+                            updateState('dotPreset5SideSpread', v);
+                            if (state.dotPreset === 'preset5') {
+                              updateState('dotSideSpread', v);
+                            }
+                          }}
+                          unit="%"
+                        />
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <Slider
+                            label="偏移 X"
+                            min={-400}
+                            max={400}
+                            step={5}
+                            value={state.dotPreset5X}
+                            onChange={(v) => {
+                              updateState('dotPreset5X', v);
+                              if (state.dotPreset === 'preset5') {
+                                updateState('dotX', v);
+                              }
+                            }}
+                            unit="px"
+                            compact
+                          />
+                          <Slider
+                            label="偏移 Y"
+                            min={-250}
+                            max={250}
+                            step={5}
+                            value={state.dotPreset5Y}
+                            onChange={(v) => {
+                              updateState('dotPreset5Y', v);
+                              if (state.dotPreset === 'preset5') {
+                                updateState('dotY', v);
+                              }
+                            }}
+                            unit="px"
+                            compact
+                          />
+                          <Slider
+                            label="旋转"
+                            min={0}
+                            max={360}
+                            step={1}
+                            value={state.dotPreset5Rotation}
+                            onChange={(v) => {
+                              updateState('dotPreset5Rotation', v);
+                              if (state.dotPreset === 'preset5') {
+                                updateState('dotRotation', v);
+                              }
+                            }}
+                            unit="°"
+                            compact
+                          />
+                        </div>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() =>
-                          updateState(
-                            'dotSeed',
-                            Math.floor(Math.random() * 100000) + 1,
-                          )
-                        }
-                        className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                        onClick={randomizeDot}
+                        className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                       >
                         随机生成
                       </button>
@@ -3349,14 +4837,119 @@ export default function App() {
                     icon={<Shuffle size={16} />}
                   >
                     <div className="space-y-4">
-                      <Slider
-                        label="条数"
-                        min={2}
-                        max={5}
-                        step={1}
-                        value={state.lineCount}
-                        onChange={(v) => updateState('lineCount', v)}
-                      />
+                      <div className="flex gap-2">
+                        {(['preset1', 'preset2', 'preset3'] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => applyLinePreset(p)}
+                            className={cx(
+                              'flex-1 py-2 rounded-xl text-[12px] font-black transition border',
+                              state.linePreset === p
+                                ? 'bg-[#9e76ff] text-white border-[#9e76ff]'
+                                : 'bg-white text-[#9e76ff] border-[#9e76ff]/40 hover:border-[#9e76ff]',
+                            )}
+                          >
+                            预设 {p.replace('preset', '')}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="space-y-3 hidden">
+                        {/* 预设1 控制器 */}
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.linePreset === 'preset1'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 1</div>
+                            {state.linePreset === 'preset1' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <Slider label="条数" min={2} max={5} step={1} value={state.linePreset1Count}
+                              onChange={(v) => { updateState('linePreset1Count', v); if (state.linePreset === 'preset1') updateState('lineCount', v); }} compact />
+                            <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset1Thickness}
+                              onChange={(v) => { updateState('linePreset1Thickness', v); if (state.linePreset === 'preset1') updateState('lineThickness', v); }} unit="px" compact />
+                            <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset1LengthContrast}
+                              onChange={(v) => { updateState('linePreset1LengthContrast', v); if (state.linePreset === 'preset1') updateState('lineLengthContrast', v); }} compact />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset1X}
+                              onChange={(v) => { updateState('linePreset1X', v); if (state.linePreset === 'preset1') updateState('lineX', v); }} unit="px" compact />
+                            <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset1Y}
+                              onChange={(v) => { updateState('linePreset1Y', v); if (state.linePreset === 'preset1') updateState('lineY', v); }} unit="px" compact />
+                          </div>
+                        </div>
+
+                        {/* 预设2 控制器 */}
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.linePreset === 'preset2'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 2</div>
+                            {state.linePreset === 'preset2' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <Slider label="条数" min={2} max={5} step={1} value={state.linePreset2Count}
+                              onChange={(v) => { updateState('linePreset2Count', v); if (state.linePreset === 'preset2') updateState('lineCount', v); }} compact />
+                            <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset2Thickness}
+                              onChange={(v) => { updateState('linePreset2Thickness', v); if (state.linePreset === 'preset2') updateState('lineThickness', v); }} unit="px" compact />
+                            <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset2LengthContrast}
+                              onChange={(v) => { updateState('linePreset2LengthContrast', v); if (state.linePreset === 'preset2') updateState('lineLengthContrast', v); }} compact />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset2X}
+                              onChange={(v) => { updateState('linePreset2X', v); if (state.linePreset === 'preset2') updateState('lineX', v); }} unit="px" compact />
+                            <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset2Y}
+                              onChange={(v) => { updateState('linePreset2Y', v); if (state.linePreset === 'preset2') updateState('lineY', v); }} unit="px" compact />
+                          </div>
+                        </div>
+
+                        {/* 预设3 控制器 */}
+                        <div
+                          className={cx(
+                            'rounded-2xl border p-3 space-y-3',
+                            state.linePreset === 'preset3'
+                              ? 'border-[#9e76ff] bg-[#9e76ff]/10'
+                              : 'border-slate-200 bg-white',
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-[12px] font-black">预设 3</div>
+                            {state.linePreset === 'preset3' && (
+                              <div className="text-[11px] font-black text-[#9e76ff]">已选中</div>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <Slider label="条数" min={2} max={5} step={1} value={state.linePreset3Count}
+                              onChange={(v) => { updateState('linePreset3Count', v); if (state.linePreset === 'preset3') updateState('lineCount', v); }} compact />
+                            <Slider label="厚度" min={10} max={80} step={1} value={state.linePreset3Thickness}
+                              onChange={(v) => { updateState('linePreset3Thickness', v); if (state.linePreset === 'preset3') updateState('lineThickness', v); }} unit="px" compact />
+                            <Slider label="长度对比" min={0} max={1} step={0.05} value={state.linePreset3LengthContrast}
+                              onChange={(v) => { updateState('linePreset3LengthContrast', v); if (state.linePreset === 'preset3') updateState('lineLengthContrast', v); }} compact />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Slider label="位置 X" min={-500} max={500} step={10} value={state.linePreset3X}
+                              onChange={(v) => { updateState('linePreset3X', v); if (state.linePreset === 'preset3') updateState('lineX', v); }} unit="px" compact />
+                            <Slider label="位置 Y" min={-400} max={400} step={10} value={state.linePreset3Y}
+                              onChange={(v) => { updateState('linePreset3Y', v); if (state.linePreset === 'preset3') updateState('lineY', v); }} unit="px" compact />
+                          </div>
+                        </div>
+                      </div>
+
                       <LineColorDots
                         label="颜色"
                         options={[
@@ -3393,33 +4986,10 @@ export default function App() {
                           );
                         }}
                       />
-                      <Slider
-                        label="厚度"
-                        min={10}
-                        max={80}
-                        step={1}
-                        value={state.lineThickness}
-                        onChange={(v) => updateState('lineThickness', v)}
-                        unit="px"
-                      />
-                      <Slider
-                        label="长度对比"
-                        hint="越大越“齐”"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={state.lineLengthContrast}
-                        onChange={(v) => updateState('lineLengthContrast', v)}
-                      />
                       <button
                         type="button"
-                        onClick={() =>
-                          updateState(
-                            'lineSeed',
-                            Math.floor(Math.random() * 100000) + 1,
-                          )
-                        }
-                        className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                        onClick={randomizeLine}
+                        className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                       >
                         随机生成
                       </button>
@@ -3443,17 +5013,56 @@ export default function App() {
                           { value: 'random', label: '随机形状' },
                         ]}
                       />
-                      <Segmented
-                        value={state.planeOrder}
-                        onChange={(v) => updateState('planeOrder', v)}
-                        options={[
-                          { value: '1-over-2', label: '1 在上' },
-                          { value: '2-over-1', label: '2 在上' },
-                        ]}
-                      />
 
-                      <div className="h-px bg-slate-100" />
-                      <div className="space-y-3">
+                      {/* 每种形状的预设按钮 */}
+                      <div className="flex gap-2">
+                        {(['preset1', 'preset2', 'preset3'] as const).map((p) => {
+                          const activePreset =
+                            state.planeShape === 'square' ? state.squarePlanePreset
+                            : state.planeShape === 'circle' ? state.circlePlanePreset
+                            : state.planeShape === 'triangle' ? state.trianglePlanePreset
+                            : state.randomPlanePreset;
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => applyPlanePreset(p)}
+                              className={cx(
+                                'flex-1 py-2 rounded-xl text-[12px] font-black transition border',
+                                activePreset === p
+                                  ? 'bg-[#9e76ff] text-white border-[#9e76ff]'
+                                  : 'bg-white text-[#9e76ff] border-[#9e76ff]/40 hover:border-[#9e76ff]',
+                              )}
+                            >
+                              预设 {p.replace('preset', '')}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {false && (
+                        <Segmented
+                          value={state.planeOrder}
+                          onChange={(v) => updateState('planeOrder', v)}
+                          options={[
+                            { value: '1-over-2', label: '1 在上' },
+                            { value: '2-over-1', label: '2 在上' },
+                          ]}
+                        />
+                      )}
+
+                      <div
+                        className={cx(
+                          'h-px bg-slate-100',
+                          'hidden',
+                        )}
+                      />
+                      <div
+                        className={cx(
+                          'space-y-3',
+                          'hidden',
+                        )}
+                      >
                         <FieldLabel
                           label={`图形1（${
                             state.planeShape === 'random'
@@ -3600,8 +5209,18 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div className="h-px bg-slate-100" />
-                      <div className="space-y-3">
+                      <div
+                        className={cx(
+                          'h-px bg-slate-100',
+                          'hidden',
+                        )}
+                      />
+                      <div
+                        className={cx(
+                          'space-y-3',
+                          'hidden',
+                        )}
+                      >
                         <FieldLabel
                           label={`图形2（${
                             state.planeShape === 'random'
@@ -3748,10 +5367,12 @@ export default function App() {
                         </div>
                       </div>
 
-                      <button
+
+
+                        <button
                         type="button"
                         onClick={randomizePlanes}
-                        className="w-full mt-1 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
+                        className="w-full mt-1 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black shadow-sm hover:bg-[#7e49f4] transition"
                       >
                         随机生成
                       </button>
@@ -3780,7 +5401,7 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#915afd] text-white text-[13px] font-black hover:bg-[#7e49f4] transition"
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#9e76ff] text-white text-[13px] font-black hover:bg-[#7e49f4] transition"
                       >
                         <ImageIcon size={18} />
                         上传 SVG
